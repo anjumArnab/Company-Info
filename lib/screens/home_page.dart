@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:rest_api_dio/services/api_call.dart';
@@ -6,7 +7,7 @@ import 'package:rest_api_dio/services/api_response.dart';
 import 'create_information.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -31,7 +32,7 @@ class _HomePageState extends State<HomePage> {
       );
 
       // Log the raw response for debugging purposes
-      print("Raw API Response: $response");
+      log("Raw API Response: $response");
 
       // Check if the response is null or empty
       if (response == null || response.isEmpty) {
@@ -45,11 +46,11 @@ class _HomePageState extends State<HomePage> {
         return response['data'] as List; // If the response contains 'data'
       } else {
         // Log and throw an error for an unexpected response format
-        print("Unexpected API response format: $response");
+        log("Unexpected API response format: $response");
         throw Exception("Invalid response format");
       }
     } catch (error) {
-      print("Error fetching companies: $error");
+      log("Error fetching companies: $error");
       return [];
     }
   }
@@ -64,12 +65,12 @@ class _HomePageState extends State<HomePage> {
       final response = await dio.delete(deleteApiPath);
 
       if (response.statusCode == 200) {
-        print("Company deleted successfully");
+        log("Company deleted successfully");
       } else {
-        print("Failed to delete company: ${response.statusMessage}");
+        log("Failed to delete company: ${response.statusMessage}");
       }
     } catch (error) {
-      print("Error deleting company: $error");
+      log("Error deleting company: $error");
     }
   }
 
@@ -160,13 +161,13 @@ class _ObjectApiResponse implements ApiResponse {
     // Handle the response here by checking the API name and processing it accordingly.
     if (apiName == ApiName.GET_INFO) {
       // Perform additional processing or logging here if needed
-      print("Response for GET_INFO: $response");
+      log("Response for GET_INFO: $response");
     }
   }
 
   @override
   void onError(dynamic errorMsg, ApiName apiName) {
     // Handle any errors that may occur during the API call
-    print("Error occurred: $errorMsg");
+    log("Error occurred: $errorMsg");
   }
 }
