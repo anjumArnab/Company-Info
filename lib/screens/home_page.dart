@@ -1,114 +1,167 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:rest_api_dio/screens/create_information.dart';
+import 'package:rest_api_dio/services/api_call.dart';
+import 'package:rest_api_dio/services/api_constants.dart';
+import 'package:rest_api_dio/services/api_response.dart';
+import 'create_information.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int count = 30;
+  late Future<List<dynamic>> _futureCompanies;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureCompanies = fetchCompanies();
+  }
+
+  Future<List<dynamic>> fetchCompanies() async {
+    try {
+      final response = await ApiCall.makeApiCall(
+        ApiConstants.GET_INFO, // API path
+        Method.GET,            // HTTP Method
+        _ObjectApiResponse(),  // Actual response handler
+        ApiName.GET_INFO,      // API name
+      );
+
+      // Check if the response is null or empty
+      if (response == null || response.isEmpty) {
+        throw Exception("No data found in the response");
+      }
+
+      // Check if the response is a List or contains a 'data' key
+      if (response is List) {
+        return response; // Direct list response
+      } else if (response is Map && response.containsKey('data')) {
+        return response['data'] as List; // If the response contains 'data'
+      } else {
+        throw Exception("Invalid response format");
+      }
+    } catch (error) {
+      print("Error fetching companies: $error");
+      return [];
+    }
+  }
+
+  Future<void> deleteCompany(int companyId) async {
+    try {
+      // Construct the DELETE API path using the company ID
+      String deleteApiPath = "${ApiConstants.BASE_URL}/$companyId";
+
+      // Make the DELETE API request
+      final dio = Dio();
+      final response = await dio.delete(deleteApiPath);
+
+      if (response.statusCode == 200) {
+        print("Company deleted successfully");
+      } else {
+        print("Failed to delete company: ${response.statusMessage}");
+      }
+    } catch (error) {
+      print("Error deleting company: $error");
+    }
+  }
+
+  void handlePopupMenuSelection(String value, int companyId) {
+    switch (value) {
+      case 'Edit':
+        // Navigate to edit page (not implemented here)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Edit functionality not yet implemented")),
+        );
+        break;
+      case 'Delete':
+        deleteCompany(companyId);
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text("Company Information"),
-      ),
-      body: ListView.builder(
-        itemCount: count,
-        itemBuilder: (context, index) {
-          return ListTile(
-            contentPadding: const EdgeInsets.all(16.0),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(50.0),
-              child: Image.network(
-                "https://logo.clearbit.com/google.ru",
-                width: 60.0,
-                height: 60.0,
-                fit: BoxFit.cover,
-              ),
-            ),
-            title: Text(
-              "Oracle",
-              style: const TextStyle(
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4.0),
-                Text(
-                  "(555) 745-1341",
-                  style: const TextStyle(fontSize: 14.0),
-                ),
-                const SizedBox(height: 4.0),
-                Text(
-                  "Eden Prairie, Minnesota, United States",
-                  style: const TextStyle(fontSize: 14.0, color: Colors.grey),
-                ),
-                SizedBox(height:15),
-                Divider(endIndent: 90,indent:80),
-              ],
-            ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'Edit') {
-                  // edit logic
-                  _updateInformation();
-                } else if (value == 'Delete') {
-                  // delete logic
-                }
+      appBar: AppBar(title: const Text("Company List")),
+      body: FutureBuilder<List<dynamic>>(
+        future: _futureCompanies,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No companies found"));
+          } else {
+            final companies = snapshot.data!;
+            return ListView.builder(
+              itemCount: companies.length,
+              itemBuilder: (context, index) {
+                final company = companies[index];
+                return ListTile(
+                  title: Text(company['company_name']),
+                  subtitle: Text(company['company_address']),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) => handlePopupMenuSelection(value, company['id']),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'Edit',
+                        child: Text('Edit'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'Delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
               },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'Edit',
-                  child: Text('Edit'),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'Delete',
-                  child: Text('Delete'),
-                ),
-              ],
-            ),
-          );
+            );
+          }
         },
       ),
-      floatingActionButton: ClipOval(
-        child: FloatingActionButton(
-          onPressed: (){
-            _createInformationPage();
-          },
-          child:const Icon(Icons.add),),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateInformation(
+                name: "",
+                address: "",
+                phone: "",
+                logo: "",
+                isEditing: false,
+              ),
+            ),
+          );
+          if (result == true) {
+            setState(() {
+              _futureCompanies = fetchCompanies();
+            });
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
- void  _createInformationPage(){
-  Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateInformation(name:"",address: "",phone:"", logo:"", isEditing: false,),
-      ),
-    );
+}
+
+class _ObjectApiResponse implements ApiResponse {
+  @override
+  void onResponse(dynamic response, ApiName apiName) {
+    // Handle the response here by checking the API name and processing it accordingly.
+    if (apiName == ApiName.GET_INFO) {
+      // Perform additional processing or logging here if needed
+      print("Response for GET_INFO: $response");
+    }
   }
 
-  void _updateInformation(){
-      Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateInformation(
-          name: "oracle"??"",
-          address: "Eden Prairie, Minnesota, United States"??"",
-          phone: "(555) 745-1341"??"",
-          logo: "https://logo.clearbit.com/google.ru",
-          isEditing: true
-        ),
-      ),
-    );
-
+  @override
+  void onError(dynamic errorMsg, ApiName apiName) {
+    // Handle any errors that may occur during the API call
+    print("Error occurred: $errorMsg");
   }
 }
