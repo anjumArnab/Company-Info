@@ -31,7 +31,7 @@ class _CreateInformationState extends State<CreateInformation> {
   late TextEditingController _nameController = TextEditingController();
   late TextEditingController _phoneController = TextEditingController();
   late TextEditingController _addressController = TextEditingController();
-    @override
+  @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.name);
@@ -105,13 +105,23 @@ class _CreateInformationState extends State<CreateInformation> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // Handle form submission
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Information Saved!')),
-                    );
+                    // Check if the form is being edited or newly created
+                    if (widget.isEditing) {
+                      // Handle form update
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Information Updated!')),
+                      );
+                    } else {
+                      // Handle new form submission
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Information Added!')),
+                      );
+                    }
                   }
                 },
-                child: const Text('Save Information'),
+                child: Text(
+                  widget.isEditing ? "Update" : "Add",
+                ),
               ),
             ],
           ),
