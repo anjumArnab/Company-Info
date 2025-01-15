@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
 
 class CreateInformation extends StatefulWidget {
-  const CreateInformation({super.key});
+  final int? id;
+  final String name;
+  final String address;
+  final String phone;
+  final String logo; // This is a URL for the logo
+  final bool isEditing;
+  const CreateInformation({
+    super.key,
+    this.id,
+    required this.name,
+    required this.address,
+    required this.phone,
+    required this.logo,
+    this.isEditing = false,
+  });
 
   @override
   State<CreateInformation> createState() => _CreateInformationState();
@@ -9,18 +23,32 @@ class CreateInformation extends StatefulWidget {
 
 class _CreateInformationState extends State<CreateInformation> {
   final _formKey = GlobalKey<FormState>();
+  /*
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  */
+  late TextEditingController _nameController = TextEditingController();
+  late TextEditingController _phoneController = TextEditingController();
+  late TextEditingController _addressController = TextEditingController();
+    @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.name);
+    _addressController = TextEditingController(text: widget.address);
+    _phoneController = TextEditingController(text: widget.phone);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        //backgroundColor: Colors.purple.shade300,
-        //foregroundColor: Colors.white,
         centerTitle: true,
-        title: const Text("Create Company"),
+        title: Text(
+          widget.isEditing
+              ? "Update Company Information"
+              : "Add Company Information",
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
