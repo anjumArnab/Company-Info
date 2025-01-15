@@ -30,6 +30,9 @@ class _HomePageState extends State<HomePage> {
         ApiName.GET_INFO,      // API name
       );
 
+      // Log the raw response for debugging purposes
+      print("Raw API Response: $response");
+
       // Check if the response is null or empty
       if (response == null || response.isEmpty) {
         throw Exception("No data found in the response");
@@ -41,6 +44,8 @@ class _HomePageState extends State<HomePage> {
       } else if (response is Map && response.containsKey('data')) {
         return response['data'] as List; // If the response contains 'data'
       } else {
+        // Log and throw an error for an unexpected response format
+        print("Unexpected API response format: $response");
         throw Exception("Invalid response format");
       }
     } catch (error) {
