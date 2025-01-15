@@ -1,39 +1,40 @@
-import 'package:rest_api_dio/services/api_client.dart';
+import 'package:dio/dio.dart';
 import 'package:rest_api_dio/services/api_constants.dart';
 import 'package:rest_api_dio/services/api_response.dart';
-import 'package:dio/dio.dart';
 
 class ApiCall {
-  static makeApiCall(String apiPath, Method method,
-      ApiResponse apiResponseListener, ApiName apiName) async {
-    final dio = ApiClient.getInstance();
-    /*
-    dio.options.headers["Authorization"] =
-        "Bearer ZGZxfpQ31Yd1bjWf2Muxw42zX6k1ymgE59YNcdLenJ4";
-        */
+  static Future<dynamic> makeApiCall(
+    String apiPath,
+    Method method,
+    ApiResponse apiResponseListener,
+    ApiName apiName,
+  ) async {
+    final dio = Dio();
     try {
+      Response response;
+
       switch (method) {
         case Method.GET:
-          final response = await dio.get(apiPath);
-          apiResponseListener.onResponse(response.data, apiName);
+          response = await dio.get(apiPath);
           break;
         case Method.POST:
-          final response = await dio.post(apiPath);
-          apiResponseListener.onResponse(response.data, apiName);
+          response = await dio.post(apiPath);
+          break;
+        case Method.PUT:
+          response = await dio.put(apiPath);
           break;
         case Method.DELETE:
-          final response = await dio.delete(apiPath);
-          apiResponseListener.onResponse(response.data, apiName);
+          response = await dio.delete(apiPath);
           break;
+        default:
+          throw Exception("Unsupported HTTP method");
       }
+
+      apiResponseListener.onResponse(response.data, apiName);
+      return response.data;
     } on DioException catch (e) {
-      if (e.response != null) {
-        apiResponseListener.onError(
-            "${e.response?.statusCode} ${e.response?.statusMessage} ${e.response}",
-            apiName);
-      } else {
-        apiResponseListener.onError("Something went wrong....", apiName);
-      }
+      apiResponseListener.onError(e.message, apiName);
+      return null;
     }
   }
 }
