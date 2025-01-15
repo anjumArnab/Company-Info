@@ -14,8 +14,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-       // backgroundColor: Colors.purple.shade300,
-        //foregroundColor: Colors.white,
         centerTitle: true,
         title: const Text("Company Information"),
       ),
@@ -61,6 +59,7 @@ class _HomePageState extends State<HomePage> {
               onSelected: (value) {
                 if (value == 'Edit') {
                   // edit logic
+                  _updateInformation();
                 } else if (value == 'Delete') {
                   // delete logic
                 }
@@ -81,8 +80,6 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: ClipOval(
         child: FloatingActionButton(
-          //backgroundColor: Colors.purple.shade300,
-          //foregroundColor: Colors.white,
           onPressed: (){
             _createInformationPage();
           },
@@ -94,7 +91,22 @@ class _HomePageState extends State<HomePage> {
   Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CreateInformation(),
+        builder: (context) => CreateInformation(name:"",address: "",phone:"", logo:"", isEditing: false,),
+      ),
+    );
+  }
+
+  void _updateInformation(){
+      Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateInformation(
+          name: "oracle"??"",
+          address: "Eden Prairie, Minnesota, United States"??"",
+          phone: "(555) 745-1341"??"",
+          logo: "https://logo.clearbit.com/google.ru",
+          isEditing: true
+        ),
       ),
     );
 
