@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rest_api_dio/screens/home_page.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../screens/homepage.dart';
 
 void main() {
   runApp(const RestApiDio());
@@ -15,10 +16,13 @@ class RestApiDio extends StatefulWidget {
 class _RestApiDioState extends State<RestApiDio> {
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Rest Api Integration using Dio",
-      home: HomePage(),
+      title: "Rest Api Integration with Dio",
+      theme: ThemeData(
+        textTheme: GoogleFonts.poppinsTextTheme(),
+      ),
+      home: const Homepage(),
     );
   }
 }
