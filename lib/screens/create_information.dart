@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/company_logo.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 
@@ -31,10 +32,7 @@ class CreateInformation extends StatelessWidget {
           children: <Widget>[
             if (logo.isNotEmpty)
               Center(
-                child: CircleAvatar(
-                  radius: 45,
-                  backgroundImage: NetworkImage(logo),
-                ),
+                child: CompanyLogo(logoUrl: logo),
               ),
             const SizedBox(height: 25),
             CustomTextField(
