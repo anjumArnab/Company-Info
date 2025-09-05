@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../widgets/company_logo.dart';
 import '../services/api_call.dart';
 import '../services/api_constants.dart';
 import '../services/api_response.dart';
@@ -16,7 +17,6 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   late Future<List<Company>> _futureCompanies;
-  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -24,7 +24,7 @@ class _HomepageState extends State<Homepage> {
     _futureCompanies = fetchCompanies();
   }
 
-  // Fetch companies from API with better error handling
+  // Fetch companies from API
   Future<List<Company>> fetchCompanies() async {
     try {
       final response = await ApiCall.makeApiCall(
@@ -36,104 +36,103 @@ class _HomepageState extends State<Homepage> {
 
       log("Raw API Response: $response");
 
-      if (response == null) {
-        throw Exception("No response received from server");
+      if (response == null || (response is List && response.isEmpty)) {
+        throw Exception("No data found in the response");
       }
 
       if (response is List) {
-        if (response.isEmpty) {
-          return []; // Return empty list instead of throwing exception
-        }
         return response.map((e) => Company.fromJson(e)).toList();
       } else if (response is Map && response.containsKey('data')) {
-        final dataList = response['data'] as List;
-        if (dataList.isEmpty) {
-          return [];
-        }
-        return dataList.map((e) => Company.fromJson(e)).toList();
+        return (response['data'] as List)
+            .map((e) => Company.fromJson(e))
+            .toList();
       } else {
         log("Unexpected API response format: $response");
-        throw Exception("Invalid response format from server");
+        throw Exception("Invalid response format");
       }
     } catch (error) {
       log("Error fetching companies: $error");
-      rethrow; // Re-throw to let FutureBuilder handle the error
+      return [];
     }
   }
 
-  // Delete company with improved error handling and user feedback
-  Future<void> deleteCompany(int companyId, String companyName) async {
-    // Show confirmation dialog
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Delete'),
-          content: Text('Are you sure you want to delete "$companyName"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    setState(() {
-      _isDeleting = true;
-    });
-
+  // Delete company and refresh list
+  Future<void> deleteCompany(int companyId) async {
     try {
-      // Construct the correct delete API path
-      String deleteApiPath = "${ApiConstants.GET_INFO}/$companyId";
+      String deleteApiPath = "${ApiConstants.BASE_URL}$companyId";
       final dio = Dio();
       final response = await dio.delete(deleteApiPath);
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         log("Company deleted successfully");
-
+        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$companyName deleted successfully'),
+            const SnackBar(
+              content: Text("Company deleted successfully"),
               backgroundColor: Colors.green,
             ),
           );
-
-          // Refresh the list
-          setState(() {
-            _futureCompanies = fetchCompanies();
-          });
         }
+        // Refresh the list
+        setState(() {
+          _futureCompanies = fetchCompanies();
+        });
       } else {
-        throw Exception("Failed to delete: ${response.statusMessage}");
+        log("Failed to delete company: ${response.statusMessage}");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text("Failed to delete company: ${response.statusMessage}"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (error) {
       log("Error deleting company: $error");
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete $companyName: $error'),
+            content: Text("Error deleting company: $error"),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isDeleting = false;
-        });
-      }
     }
+  }
+
+  // Show delete confirmation dialog
+  Future<void> showDeleteConfirmation(int companyId, String companyName) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete "$companyName"?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                deleteCompany(companyId);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Handle popup menu actions
@@ -160,16 +159,9 @@ class _HomepageState extends State<Homepage> {
         });
         break;
       case 'Delete':
-        deleteCompany(company.id, company.companyName);
+        showDeleteConfirmation(company.id, company.companyName);
         break;
     }
-  }
-
-  // Pull to refresh functionality
-  Future<void> _refreshCompanies() async {
-    setState(() {
-      _futureCompanies = fetchCompanies();
-    });
   }
 
   @override
@@ -177,173 +169,158 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Company List"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshCompanies,
-          ),
-        ],
       ),
-      body: Stack(
-        children: [
-          RefreshIndicator(
-            onRefresh: _refreshCompanies,
-            child: FutureBuilder<List<Company>>(
-              future: _futureCompanies,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.red[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Error loading companies",
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "${snapshot.error}",
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _refreshCompanies,
-                          child: const Text("Retry"),
-                        ),
-                      ],
-                    ),
-                  );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.business_outlined,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No companies found",
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text("Add your first company to get started"),
-                      ],
-                    ),
-                  );
-                } else {
-                  final companies = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: companies.length,
-                    itemBuilder: (context, index) {
-                      final company = companies[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        child: ListTile(
-                          leading: company.logo.isNotEmpty
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    company.logo,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 50,
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[300],
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(Icons.business),
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.business),
-                                ),
-                          title: Text(
-                            company.companyName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(company.companyAddress),
-                              if (company.companyNumber.isNotEmpty)
-                                Text(
-                                  company.companyNumber,
-                                  style: TextStyle(color: Colors.blue[700]),
-                                ),
-                            ],
-                          ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) =>
-                                handlePopupMenuSelection(value, company),
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'Edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Edit'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'Delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete,
-                                        size: 18, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Delete',
-                                        style: TextStyle(color: Colors.red)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
-              },
-            ),
-          ),
-          if (_isDeleting)
-            Container(
-              color: Colors.black54,
-              child: const Center(
-                child: CircularProgressIndicator(),
+      body: FutureBuilder<List<Company>>(
+        future: _futureCompanies,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text("Loading companies..."),
+                ],
               ),
-            ),
-        ],
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red[300],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error: ${snapshot.error}",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red[600]),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _futureCompanies = fetchCompanies();
+                      });
+                    },
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.business_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No companies found",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tap the + button to add a company",
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            final companies = snapshot.data!;
+            return RefreshIndicator(
+              onRefresh: () async {
+                setState(() {
+                  _futureCompanies = fetchCompanies();
+                });
+                await _futureCompanies;
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: companies.length,
+                itemBuilder: (context, index) {
+                  final company = companies[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: CompanyLogo(logoUrl: company.logo),
+                    title: Text(
+                      company.companyName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          company.companyAddress,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          company.companyNumber,
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) =>
+                          handlePopupMenuSelection(value, company),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'Edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 20),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'Delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 20, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          }
+        },
       ),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
