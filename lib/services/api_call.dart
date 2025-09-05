@@ -26,8 +26,6 @@ class ApiCall {
         case Method.DELETE:
           response = await dio.delete(apiPath);
           break;
-        default:
-          throw Exception("Unsupported HTTP method");
       }
 
       apiResponseListener.onResponse(response.data, apiName);
