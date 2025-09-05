@@ -8,7 +8,7 @@ abstract class ApiResponse {
 class _ObjectApiResponse implements ApiResponse {
   @override
   void onResponse(dynamic response, ApiName apiName) {
-    // You can handle the response here if needed
+    // Handle the response here if needed
     // (though we're returning it directly in fetchCompanies)
   }
 
