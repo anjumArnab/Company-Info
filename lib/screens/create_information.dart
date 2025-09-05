@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../widgets/custom_text_field.dart';
+import '../widgets/primary_button.dart';
 
 class CreateInformation extends StatelessWidget {
   final String name;
@@ -8,40 +10,63 @@ class CreateInformation extends StatelessWidget {
   final bool isEditing;
 
   const CreateInformation({
-    Key? key,
+    super.key,
     required this.name,
     required this.address,
     required this.phone,
     required this.logo,
     required this.isEditing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create/Edit Company")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(
+        title: Text(isEditing ? "Edit Company" : "Create Company"),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            TextField(
-              decoration: const InputDecoration(labelText: "Company Name"),
+            if (logo.isNotEmpty)
+              Center(
+                child: CircleAvatar(
+                  radius: 45,
+                  backgroundImage: NetworkImage(logo),
+                ),
+              ),
+            const SizedBox(height: 25),
+            CustomTextField(
+              label: "Company Name",
+              icon: Icons.business,
+              initialValue: name,
             ),
-            TextField(
-              decoration: const InputDecoration(labelText: "Address"),
+            const SizedBox(height: 15),
+            CustomTextField(
+              label: "Address",
+              icon: Icons.location_on,
+              initialValue: address,
             ),
-            TextField(
-              decoration: const InputDecoration(labelText: "Phone"),
+            const SizedBox(height: 15),
+            CustomTextField(
+              label: "Phone",
+              icon: Icons.phone,
+              inputType: TextInputType.phone,
+              initialValue: phone,
             ),
-            TextField(
-              decoration: const InputDecoration(labelText: "Logo URL"),
+            const SizedBox(height: 15),
+            CustomTextField(
+              label: "Logo URL",
+              icon: Icons.image,
+              initialValue: logo,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
+            const SizedBox(height: 30),
+            PrimaryButton(
+              text: isEditing ? "Update" : "Save",
               onPressed: () {
-                Navigator.pop(context, true); // Simulating a successful create/edit
+                Navigator.pop(context, true);
               },
-              child: const Text("Save"),
             ),
           ],
         ),
