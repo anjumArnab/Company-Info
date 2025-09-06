@@ -7,8 +7,9 @@ class ApiCall {
     String apiPath,
     Method method,
     ApiResponse apiResponseListener,
-    ApiName apiName,
-  ) async {
+    ApiName apiName, {
+    Map<String, dynamic>? data,
+  }) async {
     final dio = Dio();
     try {
       Response response;
@@ -18,10 +19,13 @@ class ApiCall {
           response = await dio.get(apiPath);
           break;
         case Method.POST:
-          response = await dio.post(apiPath);
+          response = await dio.post(apiPath, data: data);
           break;
         case Method.PUT:
-          response = await dio.put(apiPath);
+          response = await dio.put(apiPath, data: data);
+          break;
+        case Method.PATCH:
+          response = await dio.patch(apiPath, data: data);
           break;
         case Method.DELETE:
           response = await dio.delete(apiPath);

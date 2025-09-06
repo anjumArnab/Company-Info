@@ -1,11 +1,10 @@
 import 'dart:developer';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../widgets/company_logo.dart';
 import '../services/api_call.dart';
 import '../services/api_constants.dart';
 import '../services/api_response.dart';
-import 'create_information.dart';
+import 'create_company.dart';
 import '../model/company.dart';
 
 class Homepage extends StatefulWidget {
@@ -17,6 +16,8 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   late Future<List<Company>> _futureCompanies;
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -24,28 +25,30 @@ class _HomepageState extends State<Homepage> {
     _futureCompanies = fetchCompanies();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   // Fetch companies from API
   Future<List<Company>> fetchCompanies() async {
     try {
       final response = await ApiCall.makeApiCall(
-        ApiConstants.GET_INFO,
+        ApiConstants.GET_COMPANIES,
         Method.GET,
         _ObjectApiResponse(),
-        ApiName.GET_INFO,
+        ApiName.GET_COMPANIES,
       );
 
       log("Raw API Response: $response");
 
-      if (response == null || (response is List && response.isEmpty)) {
+      if (response == null) {
         throw Exception("No data found in the response");
       }
 
       if (response is List) {
         return response.map((e) => Company.fromJson(e)).toList();
-      } else if (response is Map && response.containsKey('data')) {
-        return (response['data'] as List)
-            .map((e) => Company.fromJson(e))
-            .toList();
       } else {
         log("Unexpected API response format: $response");
         throw Exception("Invalid response format");
@@ -56,14 +59,49 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
+  // Search companies by name
+  Future<List<Company>> searchCompanies(String companyName) async {
+    if (companyName.trim().isEmpty) {
+      return fetchCompanies();
+    }
+
+    try {
+      final response = await ApiCall.makeApiCall(
+        ApiConstants.searchCompany(companyName),
+        Method.GET,
+        _ObjectApiResponse(),
+        ApiName.SEARCH_COMPANY,
+      );
+
+      log("Search API Response: $response");
+
+      if (response == null) {
+        return [];
+      }
+
+      if (response is List) {
+        return response.map((e) => Company.fromJson(e)).toList();
+      } else {
+        log("Unexpected search response format: $response");
+        return [];
+      }
+    } catch (error) {
+      log("Error searching companies: $error");
+      return [];
+    }
+  }
+
   // Delete company and refresh list
   Future<void> deleteCompany(int companyId) async {
     try {
-      String deleteApiPath = "${ApiConstants.BASE_URL}$companyId";
-      final dio = Dio();
-      final response = await dio.delete(deleteApiPath);
+      final response = await ApiCall.makeApiCall(
+        ApiConstants.deleteCompany(companyId),
+        Method.DELETE,
+        _ObjectApiResponse(),
+        ApiName.DELETE_COMPANY,
+      );
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
+      if (response != null) {
         log("Company deleted successfully");
         // Show success message
         if (mounted) {
@@ -75,16 +113,13 @@ class _HomepageState extends State<Homepage> {
           );
         }
         // Refresh the list
-        setState(() {
-          _futureCompanies = fetchCompanies();
-        });
+        _refreshCompanies();
       } else {
-        log("Failed to delete company: ${response.statusMessage}");
+        log("Failed to delete company");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text("Failed to delete company: ${response.statusMessage}"),
+            const SnackBar(
+              content: Text("Failed to delete company"),
               backgroundColor: Colors.red,
             ),
           );
@@ -101,6 +136,36 @@ class _HomepageState extends State<Homepage> {
         );
       }
     }
+  }
+
+  // Refresh companies list
+  void _refreshCompanies() {
+    if (_isSearching && _searchController.text.trim().isNotEmpty) {
+      setState(() {
+        _futureCompanies = searchCompanies(_searchController.text.trim());
+      });
+    } else {
+      setState(() {
+        _futureCompanies = fetchCompanies();
+      });
+    }
+  }
+
+  // Handle search
+  void _handleSearch(String query) {
+    setState(() {
+      _isSearching = query.trim().isNotEmpty;
+      _futureCompanies = searchCompanies(query);
+    });
+  }
+
+  // Clear search
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _isSearching = false;
+      _futureCompanies = fetchCompanies();
+    });
   }
 
   // Show delete confirmation dialog
@@ -142,19 +207,14 @@ class _HomepageState extends State<Homepage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CreateInformation(
-              name: company.companyName,
-              address: company.companyAddress,
-              phone: company.companyNumber,
-              logo: company.logo,
+            builder: (context) => CreateCompany(
+              company: company,
               isEditing: true,
             ),
           ),
         ).then((result) {
           if (result == true) {
-            setState(() {
-              _futureCompanies = fetchCompanies();
-            });
+            _refreshCompanies();
           }
         });
         break;
@@ -169,6 +229,57 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Company List"),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _handleSearch,
+                    decoration: InputDecoration(
+                      hintText: "Search companies...",
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _isSearching
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: _clearSearch,
+                            )
+                          : null,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateCompany(
+                    company: null,
+                    isEditing: false,
+                  ),
+                ),
+              );
+              if (result == true) {
+                _refreshCompanies();
+              }
+            },
+            tooltip: "Create Company",
+          ),
+        ],
       ),
       body: FutureBuilder<List<Company>>(
         future: _futureCompanies,
@@ -202,11 +313,7 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _futureCompanies = fetchCompanies();
-                      });
-                    },
+                    onPressed: _refreshCompanies,
                     child: const Text("Retry"),
                   ),
                 ],
@@ -224,7 +331,9 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "No companies found",
+                    _isSearching
+                        ? "No companies found for your search"
+                        : "No companies found",
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[600],
@@ -232,7 +341,9 @@ class _HomepageState extends State<Homepage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Tap the + button to add a company",
+                    _isSearching
+                        ? "Try a different search term"
+                        : "Tap the + button to add a company",
                     style: TextStyle(
                       color: Colors.grey[500],
                     ),
@@ -244,9 +355,7 @@ class _HomepageState extends State<Homepage> {
             final companies = snapshot.data!;
             return RefreshIndicator(
               onRefresh: () async {
-                setState(() {
-                  _futureCompanies = fetchCompanies();
-                });
+                _refreshCompanies();
                 await _futureCompanies;
               },
               child: ListView.builder(
@@ -321,29 +430,6 @@ class _HomepageState extends State<Homepage> {
             );
           }
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        shape: const CircleBorder(),
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreateInformation(
-                name: "",
-                address: "",
-                phone: "",
-                logo: "",
-                isEditing: false,
-              ),
-            ),
-          );
-          if (result == true) {
-            setState(() {
-              _futureCompanies = fetchCompanies();
-            });
-          }
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

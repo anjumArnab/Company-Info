@@ -18,7 +18,7 @@ class _RestApiDioState extends State<RestApiDio> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Rest Api Integration with Dio",
+      title: "REST API Integration with Dio",
       theme: ThemeData(
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
