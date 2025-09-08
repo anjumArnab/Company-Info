@@ -190,7 +190,6 @@ class _CreateCompanyState extends State<CreateCompany> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         title: Text(widget.isEditing ? "Edit Company" : "Create Company"),
       ),

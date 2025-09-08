@@ -227,7 +227,6 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         title: const Text("Company List"),
         bottom: PreferredSize(
