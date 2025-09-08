@@ -20,6 +20,7 @@ class _RestApiDioState extends State<RestApiDio> {
       debugShowCheckedModeBanner: false,
       title: "REST API Integration with Dio",
       theme: ThemeData(
+        scaffoldBackgroundColor: Colors.white,
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
       home: const Homepage(),
