@@ -6,11 +6,11 @@ Flutter application for managing company information with full CRUD (Create, Rea
 
 The app integrates with a REST API to perform all operations:
 
-- **GET** `/QCIfDy/company` - Fetch all companies
-- **POST** `/QCIfDy/company` - Create new company
-- **PUT** `/QCIfDy/company/{id}` - Update company
-- **DELETE** `/QCIfDy/company/{id}` - Delete company
-- **GET** `/QCIfDy/company?company_name=value` - Search companies
+- **GET** `/company` - Fetch all companies
+- **POST** `/company` - Create new company
+- **PUT** `/company/{id}` - Update company
+- **DELETE** `/company/{id}` - Delete company
+- **GET** `/company?company_name=value` - Search companies
 
 ## Screenshots
 ![Homepage](assets/t01.png)
