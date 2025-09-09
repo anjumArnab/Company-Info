@@ -14,4 +14,4 @@ The app integrates with a REST API to perform all operations:
 
 ## Screenshots
 ![Homepage](assets/t01.png)
-![Create Company](assets/t02.png)
+![Edit Company](assets/t02.png)
