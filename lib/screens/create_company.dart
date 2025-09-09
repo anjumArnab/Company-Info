@@ -191,7 +191,7 @@ class _CreateCompanyState extends State<CreateCompany> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.deepPurple,
         title: Text(widget.isEditing ? "Edit Company" : "Create Company"),
       ),
       body: Form(
